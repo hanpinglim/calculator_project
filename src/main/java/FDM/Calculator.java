@@ -7,6 +7,13 @@ public class Calculator implements ICalculator{
         // Removing whitespaces
         String expr = number.replace(" ", "");
 
+        // normalize sign combinations
+        expr = expr.replace("++", "+");
+        expr = expr.replace("+-", "-");
+        expr = expr.replace("-+", "-");
+        expr = expr.replace("--", "+");
+
+
         // handle leading unary + or -
         if (expr.startsWith("+")) {
             return evaluate(expr.substring(1));
@@ -16,12 +23,16 @@ public class Calculator implements ICalculator{
             return -evaluate(expr.substring(1));
         }
 
-        // Detect addition
-        int plusIndex = expr.lastIndexOf("+");
-        if (plusIndex != -1){
-            String left = expr.substring(0, plusIndex);
-            String right = expr.substring(plusIndex + 1);
-            return evaluate(left) + evaluate(right);
+        // Detect addition (binary only)
+        int plusIndex = expr.lastIndexOf('+');
+        if (plusIndex > 0) {
+            char prev = expr.charAt(plusIndex - 1);
+            // binary plus only if previous char ends a value
+            if ((prev >= '0' && prev <= '9') || prev == ')') {
+                String left = expr.substring(0, plusIndex);
+                String right = expr.substring(plusIndex + 1);
+                return evaluate(left) + evaluate(right);
+            }
         }
         // Detect subtraction (binary)
         // Use the first '-' that can be binary (so "1--2" splits as "1" and "-2")
