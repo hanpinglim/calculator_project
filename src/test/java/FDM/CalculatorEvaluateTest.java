@@ -382,12 +382,12 @@ class CalculatorEvaluateTest {
 
     @Test @Order(64)
     void evaluates_longer_expression_without_parentheses() {
-        assert_eval("1+2*3-4/2+5*2", 14.0);
+        assert_eval("1+2*3-4/2+5*2", 15.0);
     }
 
     @Test @Order(65)
     void evaluates_longer_expression_with_parentheses() {
-        assert_eval("1+(2*3)-(4/2)+(5*2)", 14.0);
+        assert_eval("1+(2*3)-(4/2)+(5*2)", 15.0);
     }
 
     @Test @Order(66)
