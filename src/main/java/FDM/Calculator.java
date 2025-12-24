@@ -34,6 +34,44 @@ public class Calculator implements ICalculator{
         }
 
 
+
+
+        int powIndex = expr.lastIndexOf('^');
+        if (powIndex != -1) {
+
+            int baseStart = findBaseStart(expr, powIndex);
+
+            String leftPart = expr.substring(0, baseStart);
+            String baseStr  = expr.substring(baseStart, powIndex);
+
+            // exponent should be the immediate right operand (number or parentheses)
+            int expEnd = findExponentEnd(expr, powIndex);
+            String expStr = expr.substring(powIndex + 1, expEnd + 1);
+            String rightRest = expr.substring(expEnd + 1);
+
+            double base = evaluate(baseStr);
+
+            // FRACTION FIRST (from the STRING)
+            System.out.println("DEBUG expr=" + expr + " expStr=" + expStr);
+            Fraction frac = tryParseFraction(expStr);
+            double value;
+
+            if (frac != null) {
+                value = powFraction(base, frac);
+            } else if (expStr.indexOf('/') != -1) {
+                // If there's a slash, it was intended as a fraction exponent.
+                // If we couldn't parse it, that's a real error (don't fall back to decimal).
+                throw new IllegalArgumentException("Could not parse fractional exponent: " + expStr);
+            } else {
+                double exponent = evaluate(expStr);
+                value = pow(base, exponent);
+            }
+
+            String rebuilt = leftPart + value + rightRest;
+            rebuilt = normalizeSigns(rebuilt);
+            return evaluate(rebuilt);
+        }
+
         int openIndex = expr.lastIndexOf('(');
         if (openIndex != -1) {
             int closeIndex = expr.indexOf(')', openIndex);
@@ -57,37 +95,6 @@ public class Calculator implements ICalculator{
             return evaluate(rebuilt);
         }
 
-        int powIndex = expr.lastIndexOf('^');
-        if (powIndex != -1) {
-
-            int baseStart = findBaseStart(expr, powIndex);
-
-            String leftPart = expr.substring(0, baseStart);
-            String baseStr  = expr.substring(baseStart, powIndex);
-
-            int expEnd = findExponentEnd(expr, powIndex);
-
-            String expStr = expr.substring(powIndex + 1, expEnd + 1);
-            String rightRest = expr.substring(expEnd + 1); // anything after exponent
-
-
-            double base = evaluate(baseStr);
-
-            Fraction fracExp = tryParseFraction(expStr);
-            double value;
-
-            if (fracExp != null) {
-                value = powFraction(base, fracExp);
-            } else {
-                double exponent = evaluate(expStr);
-                value = pow(base, exponent);
-            }
-
-            String rebuilt = leftPart + value + rightRest;
-            rebuilt = normalizeSigns(rebuilt);
-            return evaluate(rebuilt);
-
-        }
 
 
 
@@ -173,18 +180,13 @@ public class Calculator implements ICalculator{
     private double pow(double base, double exponent) {
 
         if (!isInteger(exponent)) {
-            throw new IllegalArgumentException("Non-integer exponent not supported yet: " + exponent);
+            throw new IllegalArgumentException("Non-integer exponent not supported here: " + exponent);
         }
 
         int exp = (int) exponent;
 
-        if (exp == 0) {
-            return 1.0;
-        }
-
-        if (exp < 0) {
-            return 1.0 / powInt(base, -exp);
-        }
+        if (exp == 0) return 1.0;
+        if (exp < 0) return 1.0 / powInt(base, -exp);
 
         return powInt(base, exp);
     }
@@ -254,11 +256,15 @@ public class Calculator implements ICalculator{
     }
 
     private Fraction tryParseFraction(String s) {
-        String exp = s;
+        if (s == null) {
+            return null;
+        }
 
-        // remove outer parentheses if present
-        if (exp.startsWith("(") && exp.endsWith(")") && matching_outer_parentheses(exp)) {
-            exp = exp.substring(1, exp.length() - 1);
+        String exp = s.trim();
+
+        // If exponent is wrapped like "(1/2)", strip ONE outer pair.
+        if (exp.startsWith("(") && exp.endsWith(")")) {
+            exp = exp.substring(1, exp.length() - 1).trim();
         }
 
         int slashIndex = exp.indexOf('/');
@@ -266,8 +272,8 @@ public class Calculator implements ICalculator{
             return null;
         }
 
-        String left = exp.substring(0, slashIndex);
-        String right = exp.substring(slashIndex + 1);
+        String left = exp.substring(0, slashIndex).trim();
+        String right = exp.substring(slashIndex + 1).trim();
 
         if (left.isEmpty() || right.isEmpty()) {
             return null;
@@ -287,12 +293,10 @@ public class Calculator implements ICalculator{
             throw new IllegalArgumentException("Exponent denominator cannot be zero: " + s);
         }
 
-        // reduce fraction (optional but nice)
         int g = gcd(Math.abs(numerator), Math.abs(denominator));
-        numerator = numerator / g;
-        denominator = denominator / g;
+        numerator /= g;
+        denominator /= g;
 
-        // keep denominator positive
         if (denominator < 0) {
             numerator = -numerator;
             denominator = -denominator;
@@ -300,6 +304,7 @@ public class Calculator implements ICalculator{
 
         return new Fraction(numerator, denominator);
     }
+
 
     private int gcd(int a, int b) {
         if (b == 0) {
@@ -367,7 +372,7 @@ public class Calculator implements ICalculator{
     }
 
     private double roundTo3dp(double x) {
-        return Math.round(x * 1000.0) / 1000.0;
+        return Math.round(x * 10000.0) / 10000.0;
     }
 
     private int findExponentEnd(String expr, int powIndex) {
